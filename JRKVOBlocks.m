@@ -138,17 +138,37 @@ static char controllerKey;
     [observedObject removeObserver:self forKeyPath:keyPath];
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context
+- (void)observeValueForKeyPath:(NSString*)keyPath_
+                      ofObject:(id)object_
+                        change:(NSDictionary*)change_
+                       context:(void*)context_
 {
-    self.block(change);
+    JRKVOChange *changeObj = [[[JRKVOChange alloc] init] autorelease];
+    changeObj.observedObject = object_;
+    changeObj.keyPath = keyPath_;
+    changeObj.change = change_;
+    self.block(changeObj);
 }
 
 - (void)dealloc {
     [keyPath release];
     [block release];
+    [super dealloc];
+}
+
+@end
+
+//-----------------------------------------------------------------------------------------
+
+@implementation JRKVOChange
+@synthesize observedObject;
+@synthesize keyPath;
+@synthesize change;
+
+- (void)dealloc {
+    [observedObject release];
+    [keyPath release];
+    [change release];
     [super dealloc];
 }
 

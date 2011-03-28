@@ -3,7 +3,20 @@
 
 #import <Foundation/Foundation.h>
 
-typedef void (^JRKVOBlock)(NSDictionary *changes);
+@interface JRKVOChange : NSObject {
+#ifndef NOIVARS
+  @protected
+    id observedObject;
+    NSString *keyPath;
+    NSDictionary *change;
+#endif
+}
+@property(retain) id observedObject;
+@property(retain) NSString *keyPath;
+@property(retain) NSDictionary *change;
+@end
+
+typedef void (^JRKVOBlock)(JRKVOChange *change);
 
 @interface NSObject (JRKVOExtensions)
 
