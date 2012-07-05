@@ -23,13 +23,13 @@
     id          _observedObject;
     NSString    *_keyPath;
     JRKVOBlock  _block;
-    NSString    *_callStackSymbols;
+    NSArray     *_callStackSymbols;
 #endif
 }
 @property(assign)  id          observedObject;
 @property(retain)  NSString    *keyPath;
 @property(copy)    JRKVOBlock  block;
-@property(retain)  NSString    *callStackSymbols;
+@property(retain)  NSArray     *callStackSymbols;
 
 - (void)invalidate;
 @end
@@ -68,7 +68,7 @@ static char controllerKey;
         observer.observedObject = object;
         observer.keyPath = keyPath;
         observer.block = block;
-        //observer.callStackSymbols = [[NSThread callStackSymbols] description];
+        observer.callStackSymbols = [NSThread callStackSymbols];
         [controller.observers addObject:observer];
         
         [object addObserver:observer
