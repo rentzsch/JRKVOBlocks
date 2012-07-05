@@ -58,7 +58,7 @@ int main (int argc, const char * argv[]) {
     victim.key = @"uno";
     
     __block typeof(self) blockSelf = self;
-    [self jr_observe:victim keyPath:@"key" block:^(NSDictionary *change){
+    [self jr_observe:victim keyPath:@"key" block:^(JRKVOChange *change){
         Watcher *self = blockSelf;
         self.triggered = YES;
     }];
@@ -77,7 +77,7 @@ int main (int argc, const char * argv[]) {
     NSAssert(!self.triggered, @"triggered without registering");
     
     __block typeof(self) blockSelf = self;
-    [self jr_observe:victim_ keyPath:@"key" block:^(NSDictionary *change){
+    [self jr_observe:victim_ keyPath:@"key" block:^(JRKVOChange *change){
         Watcher *self = blockSelf;
         self.triggered = YES;
     }];
