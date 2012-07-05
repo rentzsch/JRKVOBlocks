@@ -5,7 +5,6 @@
 
 #import "JRKVOBlocks.h"
 #include <objc/runtime.h>
-#include <pthread.h>
 
 @interface JRKVOObserverController : NSObject {
 #ifndef NOIVARS
