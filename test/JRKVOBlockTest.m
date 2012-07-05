@@ -25,13 +25,18 @@
 int main (int argc, const char * argv[]) {
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     
-    [[[Watcher alloc] init] testWatcherOutlivesVictim];
+    {{
+        Watcher *watcher = [[[Watcher alloc] init] autorelease];
+        [watcher testWatcherOutlivesVictim];
+    }}
     
-    Victim *victim = [[[Victim alloc] init] autorelease];
-    Watcher *watcher = [[Watcher alloc] init];
-    [watcher testVictimOutlivesWatcher:victim];
-    [watcher release];
-    victim.key = @"siete";
+    {{
+        Victim *victim = [[[Victim alloc] init] autorelease];
+        Watcher *watcher = [[Watcher alloc] init];
+        [watcher testVictimOutlivesWatcher:victim];
+        [watcher release];
+        victim.key = @"siete";
+    }}
     
     [pool drain];
     return 0;
