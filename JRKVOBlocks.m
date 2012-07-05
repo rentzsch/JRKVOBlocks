@@ -23,14 +23,12 @@
     NSString    *_keyPath;
     JRKVOBlock  _block;
     NSString    *_callStackSymbols;
-    BOOL        _keyPathWasNil;
 #endif
 }
 @property(assign)  id          observedObject;
 @property(retain)  NSString    *keyPath;
 @property(copy)    JRKVOBlock  block;
 @property(retain)  NSString    *callStackSymbols;
-@property(assign)  BOOL        keyPathWasNil;
 
 - (void)invalidate;
 @end
@@ -143,7 +141,6 @@ static char controllerKey;
 @synthesize keyPath = _keyPath;
 @synthesize block = _block;
 @synthesize callStackSymbols = _callStackSymbols;
-@synthesize keyPathWasNil = _keyPathWasNil;
 
 - (void)invalidate {
     [self.observedObject removeObserver:self forKeyPath:self.keyPath];
@@ -154,15 +151,6 @@ static char controllerKey;
                         change:(NSDictionary*)change
                        context:(void*)context
 {
-    if (self.keyPathWasNil && [self.observedObject valueForKeyPath:self.keyPath]) {
-        [self.observedObject removeObserver:self
-                                 forKeyPath:[[self.keyPath componentsSeparatedByString:@"."] objectAtIndex:0]];
-        [self.observedObject addObserver:self
-                              forKeyPath:self.keyPath
-                                 options:0 // FIXME
-                                 context:NULL];
-        self.keyPathWasNil = NO;
-    }
     JRKVOChange *changeObj = [[[JRKVOChange alloc] init] autorelease];
     changeObj.observedObject = object;
     changeObj.keyPath = keyPath;
