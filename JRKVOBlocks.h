@@ -6,34 +6,34 @@
 @interface JRKVOChange : NSObject {
 #ifndef NOIVARS
   @protected
-    id observedObject;
-    NSString *keyPath;
-    NSDictionary *change;
+    id            _observedObject;
+    NSString      *_keyPath;
+    NSDictionary  *_change;
 #endif
 }
-@property(retain) id observedObject;
-@property(retain) NSString *keyPath;
-@property(retain) NSDictionary *change;
+@property(retain)  id            observedObject;
+@property(retain)  NSString      *keyPath;
+@property(retain)  NSDictionary  *change;
 @end
 
 typedef void (^JRKVOBlock)(JRKVOChange *change);
 
 @interface NSObject (JRKVOExtensions)
 
-- (void)jr_observe:(id)object_
-           keyPath:(NSString*)keyPath_
-             block:(JRKVOBlock)block_;
+- (void)jr_observe:(id)object
+           keyPath:(NSString*)keyPath
+             block:(JRKVOBlock)block;
 
-- (void)jr_observe:(id)object_
-           keyPath:(NSString*)keyPath_
-           options:(NSKeyValueObservingOptions)options_
-             block:(JRKVOBlock)block_;
+- (void)jr_observe:(id)object
+           keyPath:(NSString*)keyPath
+           options:(NSKeyValueObservingOptions)options
+             block:(JRKVOBlock)block;
 
 - (void)jr_stopObserving;
 
-- (void)jr_stopObserving:(id)object_;
+- (void)jr_stopObserving:(id)object;
 
-- (void)jr_stopObserving:(id)object_
-                 keyPath:(NSString*)keyPath_;
+- (void)jr_stopObserving:(id)object
+                 keyPath:(NSString*)keyPath;
 
 @end
