@@ -22,11 +22,15 @@
     id observedObject;
     NSString *keyPath;
     JRKVOBlock block;
+    NSString *callStackSymbols;
+    BOOL keyPathWasNil;
 #endif
 }
 @property(assign) id observedObject;
 @property(retain) NSString *keyPath;
 @property(copy)   JRKVOBlock block;
+@property(retain) NSString *callStackSymbols;
+@property(assign) BOOL keyPathWasNil;
 
 - (void)invalidate;
 @end
@@ -49,6 +53,10 @@ static char controllerKey;
            options:(NSKeyValueObservingOptions)options_
              block:(JRKVOBlock)block_
 {
+    NSParameterAssert(object_);
+    NSParameterAssert(keyPath_ && [keyPath_ length]);
+    NSParameterAssert(block_);
+    
     @synchronized(self) {
         JRKVOObserverController *controller = objc_getAssociatedObject(self, &controllerKey);
         if (!controller) {
@@ -61,6 +69,7 @@ static char controllerKey;
         observer.observedObject = object_;
         observer.keyPath = keyPath_;
         observer.block = block_;
+        //observer.callStackSymbols = [[NSThread callStackSymbols] description];
         [controller.observers addObject:observer];
         
         [object_ addObserver:observer
@@ -133,6 +142,8 @@ static char controllerKey;
 @synthesize observedObject;
 @synthesize keyPath;
 @synthesize block;
+@synthesize callStackSymbols;
+@synthesize keyPathWasNil;
 
 - (void)invalidate {
     [observedObject removeObserver:self forKeyPath:keyPath];
@@ -143,6 +154,15 @@ static char controllerKey;
                         change:(NSDictionary*)change_
                        context:(void*)context_
 {
+    if (keyPathWasNil && [observedObject valueForKeyPath:keyPath]) {
+        [observedObject removeObserver:self
+                            forKeyPath:[[keyPath componentsSeparatedByString:@"."] objectAtIndex:0]];
+        [observedObject addObserver:self
+                  forKeyPath:keyPath
+                     options:0 // FIXME
+                     context:NULL];
+        keyPathWasNil = NO;
+    }
     JRKVOChange *changeObj = [[[JRKVOChange alloc] init] autorelease];
     changeObj.observedObject = object_;
     changeObj.keyPath = keyPath_;
@@ -150,9 +170,20 @@ static char controllerKey;
     self.block(changeObj);
 }
 
+- (NSString*)description {
+    return [NSString stringWithFormat:@"%@<%p> observedObject:%@<%p> keyPath:%@ callStackSymbols:%@",
+            [self className],
+            self,
+            [observedObject className],
+            observedObject,
+            keyPath,
+            callStackSymbols];
+}
+
 - (void)dealloc {
     [keyPath release];
     [block release];
+    [callStackSymbols release];
     [super dealloc];
 }
 
