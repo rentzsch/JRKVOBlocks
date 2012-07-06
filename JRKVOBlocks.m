@@ -23,14 +23,14 @@
     id          _observedObject;
     NSString    *_keyPath;
     JRKVOBlock  _block;
-    NSArray     *_callStackSymbols;
+    NSArray     *_observerCallstack;
     NSThread    *_observerThread;
 #endif
 }
 @property(assign)  id          observedObject;
 @property(retain)  NSString    *keyPath;
 @property(copy)    JRKVOBlock  block;
-@property(retain)  NSArray     *callStackSymbols;
+@property(retain)  NSArray     *observerCallstack;
 @property(retain)  NSThread    *observerThread;
 
 - (void)invalidate;
@@ -71,7 +71,9 @@ static char controllerKey;
         observer.observedObject = object;
         observer.keyPath = keyPath;
         observer.block = block;
-        observer.callStackSymbols = [NSThread callStackSymbols];
+#ifdef JRKVOBlocks_DontRecordCallstack
+        observer.observerCallstack = [NSThread callStackSymbols];
+#endif
         if (options & JRCallBlockOnObserverThread) {
             options &= ~JRCallBlockOnObserverThread;
             observer.observerThread = [NSThread currentThread];
@@ -148,7 +150,7 @@ static char controllerKey;
 @synthesize observedObject = _observedObject;
 @synthesize keyPath = _keyPath;
 @synthesize block = _block;
-@synthesize callStackSymbols = _callStackSymbols;
+@synthesize observerCallstack = _observerCallstack;
 @synthesize observerThread = _observerThread;
 
 - (void)invalidate {
@@ -181,19 +183,20 @@ static char controllerKey;
 }
 
 - (NSString*)description {
-    return [NSString stringWithFormat:@"%@<%p> observedObject:%@<%p> keyPath:%@ callStackSymbols:%@",
-            [self className],
+    return [NSString stringWithFormat:@"%@<%p> observedObject:%@<%p> keyPath:%@ thread:%@ callstack:%@",
+            [self class],
             self,
-            [self.observedObject className],
+            [self.observedObject class],
             self.observedObject,
             self.keyPath,
-            self.callStackSymbols];
+            self.observerThread,
+            self.observerCallstack];
 }
 
 - (void)dealloc {
     [_keyPath release];
     [_block release];
-    [_callStackSymbols release];
+    [_observerCallstack release];
     [_observerThread release];
     [super dealloc];
 }
