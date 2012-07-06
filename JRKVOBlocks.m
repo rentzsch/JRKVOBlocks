@@ -1,4 +1,4 @@
-// JRKVOBlocks.m semver:1.0.0
+// JRKVOBlocks.m semver:1.1.0
 //   Copyright (c) 2011-2012 Jonathan 'Wolf' Rentzsch: http://rentzsch.com
 //   Some rights reserved: http://opensource.org/licenses/MIT
 //   https://github.com/rentzsch/JRKVOBlocks
