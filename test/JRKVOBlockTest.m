@@ -4,20 +4,20 @@
 @interface Victim : NSObject {
 #ifndef NOIVARS
   @protected
-    NSString *key;
+    NSString  *_value;
+    BOOL      _threadFired;
 #endif
 }
-@property(retain) NSString *key;
+@property(retain)  NSString  *value;
+@property(assign)  BOOL      threadFired;
 @end
 
 //-----------------------------------------------------------------------------------------
 
-@interface Watcher : NSObject {
-    BOOL triggered;
-}
-@property(assign) BOOL triggered;
-- (void)testWatcherOutlivesVictim;
-- (void)testVictimOutlivesWatcher:(Victim*)victim_;
+@interface Watcher : NSObject
+- (void)testKVOWithVictim:(Victim*)victim_;
+- (void)testVictimUpdatesValueOnBackgroundThreadWithSyncCallback:(Victim*)victim;
+- (void)testVictimUpdatesValueOnBackgroundThreadWithCallbackOnMainThread:(Victim*)victim;
 @end
 
 //-----------------------------------------------------------------------------------------
@@ -26,74 +26,126 @@ int main (int argc, const char * argv[]) {
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     
     {{
-        Watcher *watcher = [[[Watcher alloc] init] autorelease];
-        [watcher testWatcherOutlivesVictim];
-    }}
-    
-    {{
-        Victim *victim = [[[Victim alloc] init] autorelease];
+        printf("Testing Watcher outliving Victim\n");
+        
+        Victim *victim = [[Victim alloc] init];
         Watcher *watcher = [[Watcher alloc] init];
-        [watcher testVictimOutlivesWatcher:victim];
+        
+        [watcher testKVOWithVictim:victim];
+        
         [watcher release];
-        victim.key = @"siete";
+        [victim release];
+    }}
+    {{
+        printf("Testing Victim outliving Watcher\n");
+        
+        Victim *victim = [[Victim alloc] init];
+        Watcher *watcher = [[Watcher alloc] init];
+        
+        [watcher testKVOWithVictim:victim];
+        
+        [watcher release];
+        
+        victim.value = @"siete"; // Make sure nothing fires.
+        [victim release];
+    }}
+    {{
+        printf("Testing Victim Updating Value on Background Thread With Sync Callback\n");
+        
+        Victim *victim = [[Victim alloc] init];
+        Watcher *watcher = [[Watcher alloc] init];
+        
+        [watcher testVictimUpdatesValueOnBackgroundThreadWithSyncCallback:victim];
+        
+        [watcher release];
+        [victim release];
+    }}
+    {{
+        printf("Testing Victim Updating Value on Background Thread With Async Callback on Main Thread\n");
+        
+        Victim *victim = [[Victim alloc] init];
+        Watcher *watcher = [[Watcher alloc] init];
+        
+        [watcher testVictimUpdatesValueOnBackgroundThreadWithCallbackOnMainThread:victim];
+        
+        [watcher release];
+        [victim release];
     }}
     
+    [NSThread sleepForTimeInterval:0.25];
     [pool drain];
+    [NSThread sleepForTimeInterval:0.25];
     return 0;
 }
 
 //-----------------------------------------------------------------------------------------
 
 @implementation Victim
-@synthesize key;
+@synthesize value = _value;
+@synthesize threadFired = _threadFired;
+
+- (void)fireThread:(id)ignored {
+    self.threadFired = YES;
+}
 
 - (void)dealloc {
-    [key release];
+    [_value release];
     [super dealloc];
 }
+
 @end
 
 //-----------------------------------------------------------------------------------------
 
 @implementation Watcher
-@synthesize triggered;
 
-- (void)testWatcherOutlivesVictim {
-    Victim *victim = [[[Victim alloc] init] autorelease];
-    victim.key = @"uno";
+- (void)testKVOWithVictim:(Victim*)victim {
+    __block BOOL triggered = NO;
+    victim.value = @"uno";
     
-    __block typeof(self) blockSelf = self;
-    [self jr_observe:victim keyPath:@"key" block:^(JRKVOChange *change){
-        Watcher *self = blockSelf;
-        self.triggered = YES;
+    [self jr_observe:victim keyPath:@"value" block:^(JRKVOChange *change){
+        triggered = YES;
     }];
-    victim.key = @"dos";
-	NSAssert(self.triggered, @"failed to trigger");
     
-    [self jr_stopObserving:victim keyPath:@"key"];
-    self.triggered = NO;
-    victim.key = @"tres";
-    NSAssert(!self.triggered, @"triggered after deregistering");
+    victim.value = @"dos";
+	NSAssert(triggered, @"failed to trigger");
+    
+    [self jr_stopObserving:victim keyPath:@"value"];
+    triggered = NO;
+    
+    victim.value = @"tres";
+    NSAssert(!triggered, @"triggered after deregistering");
 }
 
-- (void)testVictimOutlivesWatcher:(Victim*)victim_ {
-    self.triggered = NO;
-    victim_.key = @"cuatro";
-    NSAssert(!self.triggered, @"triggered without registering");
-    
-    __block typeof(self) blockSelf = self;
-    [self jr_observe:victim_ keyPath:@"key" block:^(JRKVOChange *change){
-        Watcher *self = blockSelf;
-        self.triggered = YES;
+- (void)testVictimUpdatesValueOnBackgroundThreadWithSyncCallback:(Victim*)victim {
+    NSConditionLock *lock = [[[NSConditionLock alloc] initWithCondition:0] autorelease];
+    [self jr_observe:victim keyPath:@"threadFired" block:^(JRKVOChange *change){
+        assert(![NSThread isMainThread]);
+        [lock lock];
+        [lock unlockWithCondition:1];
     }];
-    self.triggered = NO;
-    victim_.key = @"cinco";
-    NSAssert(self.triggered, @"failed to trigger");
     
-    [self jr_stopObserving:victim_ keyPath:@"key"];
-    self.triggered = NO;
-    victim_.key = @"seis";
-    NSAssert(!self.triggered, @"triggered after deregistering");
+    [victim performSelectorInBackground:@selector(fireThread:) withObject:nil];
+    [lock lockWhenCondition:1];
+    [lock unlock];
+}
+
+- (void)testVictimUpdatesValueOnBackgroundThreadWithCallbackOnMainThread:(Victim*)victim {
+    __block BOOL callbackFired = NO;
+    [self jr_observe:victim
+             keyPath:@"threadFired"
+             options:JRCallBlockOnObserverThread
+               block:^(JRKVOChange *change)
+     {
+         assert([NSThread isMainThread]);
+         callbackFired = YES;
+     }];
+    
+    [victim performSelectorInBackground:@selector(fireThread:) withObject:nil];
+    
+    while (!callbackFired) {
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+    }
 }
 
 /* Don't need this anymore -- JRKVOBlocks will auto-deregister for you

@@ -5,20 +5,9 @@
 
 #import <Foundation/Foundation.h>
 
-@interface JRKVOChange : NSObject {
-#ifndef NOIVARS
-  @protected
-    id            _observedObject;
-    NSString      *_keyPath;
-    NSDictionary  *_change;
-#endif
-}
-@property(retain)  id            observedObject;
-@property(retain)  NSString      *keyPath;
-@property(retain)  NSDictionary  *change;
-@end
-
+@class JRKVOChange;
 typedef void (^JRKVOBlock)(JRKVOChange *change);
+
 
 @interface NSObject (JRKVOExtensions)
 
@@ -38,4 +27,23 @@ typedef void (^JRKVOBlock)(JRKVOChange *change);
 - (void)jr_stopObserving:(id)object
                  keyPath:(NSString*)keyPath;
 
+@end
+
+enum {
+    JRCallBlockOnObserverThread = 0x80000000
+};
+
+//-----------------------------------------------------------------------------------------
+
+@interface JRKVOChange : NSObject {
+#ifndef NOIVARS
+  @protected
+    id            _observedObject;
+    NSString      *_keyPath;
+    NSDictionary  *_change;
+#endif
+}
+@property(retain)  id            observedObject;
+@property(retain)  NSString      *keyPath;
+@property(retain)  NSDictionary  *change;
 @end

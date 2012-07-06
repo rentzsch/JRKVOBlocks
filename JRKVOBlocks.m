@@ -24,12 +24,14 @@
     NSString    *_keyPath;
     JRKVOBlock  _block;
     NSArray     *_callStackSymbols;
+    NSThread    *_observerThread;
 #endif
 }
 @property(assign)  id          observedObject;
 @property(retain)  NSString    *keyPath;
 @property(copy)    JRKVOBlock  block;
 @property(retain)  NSArray     *callStackSymbols;
+@property(retain)  NSThread    *observerThread;
 
 - (void)invalidate;
 @end
@@ -53,6 +55,7 @@ static char controllerKey;
              block:(JRKVOBlock)block
 {
     NSParameterAssert(object);
+    NSParameterAssert(self != object); // Common mistake -- use self.
     NSParameterAssert(keyPath && [keyPath length]);
     NSParameterAssert(block);
     
@@ -69,6 +72,10 @@ static char controllerKey;
         observer.keyPath = keyPath;
         observer.block = block;
         observer.callStackSymbols = [NSThread callStackSymbols];
+        if (options & JRCallBlockOnObserverThread) {
+            options &= ~JRCallBlockOnObserverThread;
+            observer.observerThread = [NSThread currentThread];
+        }
         [controller.observers addObject:observer];
         
         [object addObserver:observer
@@ -142,6 +149,7 @@ static char controllerKey;
 @synthesize keyPath = _keyPath;
 @synthesize block = _block;
 @synthesize callStackSymbols = _callStackSymbols;
+@synthesize observerThread = _observerThread;
 
 - (void)invalidate {
     [self.observedObject removeObserver:self forKeyPath:self.keyPath];
@@ -156,7 +164,20 @@ static char controllerKey;
     changeObj.observedObject = object;
     changeObj.keyPath = keyPath;
     changeObj.change = change;
-    self.block(changeObj);
+    
+    if (self.observerThread && ![[NSThread currentThread] isEqual:self.observerThread]) {
+        [self performSelector:@selector(callSelfBlockWithChange:)
+                     onThread:self.observerThread
+                   withObject:changeObj
+                waitUntilDone:NO];
+    } else {
+        self.block(changeObj);
+    }
+}
+
+- (void)callSelfBlockWithChange:(JRKVOChange*)change {
+    NSAssert([[NSThread currentThread] isEqual:self.observerThread], nil);
+    self.block(change);
 }
 
 - (NSString*)description {
@@ -173,6 +194,7 @@ static char controllerKey;
     [_keyPath release];
     [_block release];
     [_callStackSymbols release];
+    [_observerThread release];
     [super dealloc];
 }
 
